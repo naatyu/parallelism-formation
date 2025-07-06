@@ -1,0 +1,350 @@
+{
+  "version": "1.0",
+  "truncation": null,
+  "padding": null,
+  "added_tokens": [
+    {
+      "id": 0,
+      "content": "<unk>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 1,
+      "content": "<pad>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 2,
+      "content": "<eos>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 3,
+      "content": "<bos>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    }
+  ],
+  "normalizer": null,
+  "pre_tokenizer": {
+    "type": "Split",
+    "pattern": {
+      "String": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
+    },
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "post_processor": {
+    "type": "TemplateProcessing",
+    "single": [
+      {
+        "Sequence": {
+          "id": "A",
+          "type_id": 0
+        }
+      },
+      {
+        "SpecialToken": {
+          "id": "<eos>",
+          "type_id": 0
+        }
+      }
+    ],
+    "pair": [
+      {
+        "Sequence": {
+          "id": "A",
+          "type_id": 0
+        }
+      },
+      {
+        "SpecialToken": {
+          "id": "<eos>",
+          "type_id": 0
+        }
+      },
+      {
+        "Sequence": {
+          "id": "B",
+          "type_id": 1
+        }
+      },
+      {
+        "SpecialToken": {
+          "id": "<eos>",
+          "type_id": 1
+        }
+      }
+    ],
+    "special_tokens": {
+      "<eos>": {
+        "id": "<eos>",
+        "ids": [
+          2
+        ],
+        "tokens": [
+          "<eos>"
+        ]
+      }
+    }
+  },
+  "decoder": null,
+  "model": {
+    "type": "BPE",
+    "dropout": null,
+    "unk_token": null,
+    "continuing_subword_prefix": null,
+    "end_of_word_suffix": null,
+    "fuse_unk": false,
+    "byte_fallback": true,
+    "ignore_merges": false,
+    "vocab": {
+      "<unk>": 0,
+      "<pad>": 1,
+      "<eos>": 2,
+      "<bos>": 3,
+      "_": 4,
+      "a": 5,
+      "c": 6,
+      "d": 7,
+      "e": 8,
+      "f": 9,
+      "g": 10,
+      "h": 11,
+      "i": 12,
+      "k": 13,
+      "l": 14,
+      "m": 15,
+      "n": 16,
+      "o": 17,
+      "p": 18,
+      "r": 19,
+      "s": 20,
+      "t": 21,
+      "u": 22,
+      "x": 23,
+      "co": 24,
+      "re": 25,
+      "sco": 26,
+      "score": 27,
+      "_score": 28,
+      "ag": 29,
+      "an": 30,
+      "gu": 31,
+      "lan": 32,
+      "nt": 33,
+      "age": 34,
+      "guage": 35,
+      "language": 36,
+      "_p": 37,
+      "_co": 38,
+      "at": 39,
+      "du": 40,
+      "en": 41,
+      "ex": 42,
+      "e_p": 43,
+      "fi": 44,
+      "id": 45,
+      "int": 46,
+      "ken": 47,
+      "le_p": 48,
+      "mp": 49,
+      "oken": 50,
+      "rl": 51,
+      "tex": 52,
+      "token": 53,
+      "unt": 54,
+      "url": 55,
+      "language_score": 56,
+      "_count": 57,
+      "ath": 58,
+      "dump": 59,
+      "file_p": 60,
+      "int_score": 61,
+      "text": 62,
+      "token_count": 63,
+      "file_path": 64
+    },
+    "merges": [
+      [
+        "c",
+        "o"
+      ],
+      [
+        "r",
+        "e"
+      ],
+      [
+        "s",
+        "co"
+      ],
+      [
+        "sco",
+        "re"
+      ],
+      [
+        "_",
+        "score"
+      ],
+      [
+        "a",
+        "g"
+      ],
+      [
+        "a",
+        "n"
+      ],
+      [
+        "g",
+        "u"
+      ],
+      [
+        "l",
+        "an"
+      ],
+      [
+        "n",
+        "t"
+      ],
+      [
+        "ag",
+        "e"
+      ],
+      [
+        "gu",
+        "age"
+      ],
+      [
+        "lan",
+        "guage"
+      ],
+      [
+        "_",
+        "p"
+      ],
+      [
+        "_",
+        "co"
+      ],
+      [
+        "a",
+        "t"
+      ],
+      [
+        "d",
+        "u"
+      ],
+      [
+        "e",
+        "n"
+      ],
+      [
+        "e",
+        "x"
+      ],
+      [
+        "e",
+        "_p"
+      ],
+      [
+        "f",
+        "i"
+      ],
+      [
+        "i",
+        "d"
+      ],
+      [
+        "i",
+        "nt"
+      ],
+      [
+        "k",
+        "en"
+      ],
+      [
+        "l",
+        "e_p"
+      ],
+      [
+        "m",
+        "p"
+      ],
+      [
+        "o",
+        "ken"
+      ],
+      [
+        "r",
+        "l"
+      ],
+      [
+        "t",
+        "ex"
+      ],
+      [
+        "t",
+        "oken"
+      ],
+      [
+        "u",
+        "nt"
+      ],
+      [
+        "u",
+        "rl"
+      ],
+      [
+        "language",
+        "_score"
+      ],
+      [
+        "_co",
+        "unt"
+      ],
+      [
+        "at",
+        "h"
+      ],
+      [
+        "du",
+        "mp"
+      ],
+      [
+        "fi",
+        "le_p"
+      ],
+      [
+        "int",
+        "_score"
+      ],
+      [
+        "tex",
+        "t"
+      ],
+      [
+        "token",
+        "_count"
+      ],
+      [
+        "file_p",
+        "ath"
+      ]
+    ]
+  }
+}

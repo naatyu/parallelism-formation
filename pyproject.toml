@@ -1,0 +1,26 @@
+[project]
+name = "parallelism-formation"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=3.6.0",
+    "torch>=2.7.1",
+    "ty>=0.0.1a12",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["ALL"]
+fixable = ["ALL"]
+unfixable = ["F401"]
+
+[dependency-groups]
+dev = [
+    "huggingface-hub>=0.33.2",
+    "tokenizers>=0.21.2",
+    "transformers>=4.53.0",
+]
