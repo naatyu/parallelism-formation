@@ -1,12 +1,15 @@
 """Train a tokenizer for our model."""
 
 import argparse
+from collections.abc import Iterator
 from pathlib import Path
 
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
 from tokenizers import Tokenizer, pre_tokenizers, processors
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
+
+from src.utils import logger
 
 TOKENIZER_PATTERN = pat_str = "|".join(  # noqa: FLY002
     [
@@ -21,9 +24,10 @@ TOKENIZER_PATTERN = pat_str = "|".join(  # noqa: FLY002
 )
 
 
-def get_training_corpus():
-    for i in range(0, len(dataset), 1000):
-        yield dataset[i : i + 1000]["text"]
+def get_training_corpus(dataset: Dataset, batch_size: int = 1000) -> Iterator[list[str]]:
+    """Iterate over dataset in batches."""
+    for i in range(0, len(dataset), batch_size):
+        yield dataset[i : i + batch_size]["text"]
 
 
 if __name__ == "__main__":
@@ -65,7 +69,7 @@ if __name__ == "__main__":
 
     # Start of training
     tokenizer.train_from_iterator(
-        get_training_corpus(),
+        get_training_corpus(dataset=dataset, batch_size=32),
         trainer,
         length=len(dataset),
     )
@@ -88,13 +92,13 @@ if __name__ == "__main__":
     # Save tokenizer
     Path(args.save_path).mkdir(parents=True, exist_ok=True)
     tokenizer.save(str(args.save_path / "tokenizer"))
-    print(f"Saved tokenizer to {args.save_path}")
+    logger.info(f"Saved tokenizer to {args.save_path}")
 
     # Test tokenizer
     pretrained_tokenizer = Tokenizer.from_file("out/pretrained_tokenizer")
     test_text = "This is a sample sentence from 2025 to tokenize."
     tokenized_input = pretrained_tokenizer(test_text, return_tensors="pt")
 
-    print(f"Original text: {test_text}")
-    print(f"Encoded input IDs: {tokenized_input.input_ids}")
-    print(f"Decoded text: {pretrained_tokenizer.decode(tokenized_input.input_ids[0])}")
+    logger.info(f"Original text: {test_text}")
+    logger.info(f"Encoded input IDs: {tokenized_input.input_ids}")
+    logger.info(f"Decoded text: {pretrained_tokenizer.decode(tokenized_input.input_ids[0])}")
