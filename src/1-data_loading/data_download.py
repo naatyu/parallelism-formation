@@ -5,6 +5,8 @@ from pathlib import Path
 
 from huggingface_hub import snapshot_download
 
+from src.utils import logger
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -24,4 +26,4 @@ if __name__ == "__main__":
         local_dir=args.save_dir,
     )
 
-    print(f"Successfully downloaded FineWeb-Edu 10B in {res} !")
+    logger.info(f"Successfully downloaded FineWeb-Edu 10B in {res} !")
