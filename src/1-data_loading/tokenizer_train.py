@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     # Start of training
     tokenizer.train_from_iterator(
-        get_training_corpus(dataset=dataset, batch_size=32),
+        get_training_corpus(dataset=dataset),
         trainer,
         length=len(dataset),
     )
