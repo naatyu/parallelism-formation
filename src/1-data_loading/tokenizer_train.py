@@ -51,6 +51,9 @@ if __name__ == "__main__":
     # Load dataset
     dataset = load_dataset("parquet", data_dir=args.data_path, split="train")
 
+    # Remove unused columns
+    dataset = dataset.remove_columns([col for col in dataset.column_names if col != "text"])
+
     # Initialize BPE
     tokenizer = Tokenizer(BPE(byte_fallback=True))
 
