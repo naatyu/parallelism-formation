@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
     # Define trainer
     trainer = BpeTrainer(
-        vocab_size=2**16,
+        vocab_size=2**15,
         show_progress=True,
         special_tokens=["<unk>", "<pad>", "<eos>", "<bos>"],
     )
