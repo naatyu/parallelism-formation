@@ -10,9 +10,9 @@ from src.utils import logger
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--save-dir",
+        "--save-path",
         type=Path,
-        dest="save_dir",
+        dest="save_path",
         help="Where to save the dataset.",
         required=True,
     )
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         repo_id="HuggingFaceFW/fineweb-edu",
         repo_type="dataset",
         allow_patterns="sample/10BT/*",
-        local_dir=args.save_dir,
+        local_dir=args.save_path,
     )
 
     logger.info(f"Successfully downloaded FineWeb-Edu 10B in {res} !")
