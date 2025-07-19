@@ -14,7 +14,7 @@ from src.utils import logger
 
 tokenizer = Tokenizer.from_pretrained(
     "mistralai/Mistral-7B-Instruct-v0.3",
-)  # TODO: update with local tokenizer later
+)
 tokenizer.pad_token = "</s>"
 
 
