@@ -4,12 +4,15 @@ import logging
 from pathlib import Path
 
 
-def get_logger(level: int = logging.INFO, log_file: Path | None = None) -> logging.Logger:
+def get_logger(
+    level: int = logging.INFO,
+    log_file: Path | None = None,
+) -> logging.Logger:
     """Configure and return a logger instance for your ML pipeline.
 
     Args:
         log_file (str): Path to the log file.
-        level (int): Minimum logging level for the logger (e.g., logging.INFO, logging.DEBUG).
+        level (int): Minimum logging level for the logger.
         enable_file_logging (bool): If True, a file handler will be added.
 
     Returns:
