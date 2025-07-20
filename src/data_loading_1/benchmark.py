@@ -8,11 +8,12 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
-import ex1
 import torch
 from torch.utils.data import DataLoader
 
 from src.utils import logger
+
+from . import ex1
 
 
 def run_benchmark(  # noqa: PLR0913

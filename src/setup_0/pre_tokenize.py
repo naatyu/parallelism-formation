@@ -32,7 +32,9 @@ if __name__ == "__main__":
     dataset = load_dataset("parquet", data_dir=args.data_path, split="train")
 
     # Remove unused columns
-    dataset = dataset.remove_columns([col for col in dataset.column_names if col != "text"])
+    dataset = dataset.remove_columns(
+        [col for col in dataset.column_names if col != "text"],
+    )
 
     # TODO: remove later, only for local test
     dataset = dataset.select(range(50000))
@@ -40,13 +42,16 @@ if __name__ == "__main__":
     # Load tokenizer
     tokenizer = Tokenizer.from_pretrained(
         "mistralai/Mistral-7B-Instruct-v0.3",
-    )  # TODO: update with local tokenizer later
+    )
     eos_token_id = 2
 
-    def tokenize(batch):
+    def tokenize(batch: dict) -> dict:
+        """Tokenize a batch."""
         # Tokenize and add EOS token. We filter out empty strings.
         tokenized_texts = [
-            [*tokenizer.encode(text).ids, eos_token_id] for text in batch["text"] if text
+            [*tokenizer.encode(text).ids, eos_token_id]
+            for text in batch["text"]
+            if text
         ]
         # The output of map must be a dictionary
         return {"input_ids": tokenized_texts}
@@ -63,7 +68,10 @@ if __name__ == "__main__":
     )
 
     # Concatenate all tokens
-    all_tokens = np.fromiter(chain.from_iterable(tokenized_dataset["input_ids"]), dtype=np.int32)
+    all_tokens = np.fromiter(
+        chain.from_iterable(tokenized_dataset["input_ids"]),
+        dtype=np.int32,
+    )
 
     # Keep only full sequences
     seq_len = 1024
@@ -76,7 +84,12 @@ if __name__ == "__main__":
     if not args.save_path.exists():
         args.save_path.mkdir(parents=True, exist_ok=True)
     mmap_path = Path(args.save_path) / "pretokenized.mmap"
-    memmap_array = np.memmap(mmap_path, dtype=np.int32, mode="w+", shape=shaped_tokens.shape)
+    memmap_array = np.memmap(
+        mmap_path,
+        dtype=np.int32,
+        mode="w+",
+        shape=shaped_tokens.shape,
+    )
 
     logger.info("Writing tokens to memmap file...")
     memmap_array[:] = shaped_tokens[:]
