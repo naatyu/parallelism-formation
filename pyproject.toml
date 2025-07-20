@@ -8,22 +8,23 @@ dependencies = [
     "datasets>=3.6.0",
     "numpy>=2.3.1",
     "protobuf>=6.31.1",
+    "sentencepiece>=0.2.0",
     "torch>=2.7.1",
-    "ty>=0.0.1a12",
+]
+
+[dependency-groups]
+dev = [
+    "huggingface-hub>=0.33.2",
+    "transformers>=4.53.0",
 ]
 
 [tool.ruff]
-line-length = 100
+line-length = 88
 
 [tool.ruff.lint]
 select = ["ALL"]
 fixable = ["ALL"]
 unfixable = ["F401"]
 
-[dependency-groups]
-dev = [
-    "huggingface-hub>=0.33.2",
-    "sentencepiece>=0.2.0",
-    "tokenizers>=0.21.2",
-    "transformers>=4.53.0",
-]
+[tool.ty.environment]
+python = "./.venv"
