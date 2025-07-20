@@ -1,9 +1,3 @@
-"""In this first exercise we will create a custom text dataset and it's dataloader.
-
-When implementing the dataset, be careful to the type hinting. Check also that the
-collate function return a valid batch (all squences should have the same shape).
-"""
-
 import torch
 from datasets import load_dataset
 from torch.utils.data import DataLoader, Dataset

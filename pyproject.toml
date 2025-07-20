@@ -23,6 +23,7 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["ALL"]
+ignore = ["D100"]
 fixable = ["ALL"]
 unfixable = ["F401"]
 
