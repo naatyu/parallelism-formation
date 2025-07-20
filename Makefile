@@ -10,9 +10,9 @@ DATA_DIR := data
 DATASET_DIR := $(DATA_DIR)/sample/10BT
 PRETOKENIZE_DIR := $(DATA_DIR)/pretokenized_dataset
 
-# Targets
 all: env
 
+# --- Setup --- #
 env: $(VENV_DIR)
 	@echo "Syncing env..."
 	uv sync
@@ -30,3 +30,8 @@ pretokenize_data: $(VENV_DIR)
 	@echo "Pretokenizing dataset..."
 	$(VENV_DIR)/bin/python src/0-setup/pre_tokenize.py --data-path $(DATASET_DIR) --save-path $(PRETOKENIZE_DIR)
 	@echo "Pretokenizing dataset done !"
+
+# --- Exercises --- #
+data_loading_ex1: $(VENV_DIR)
+	@echo "Runing exercise 1..."
+	$(VENV_DIR)/bin/python src/1-data_loading/ex1.py
