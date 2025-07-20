@@ -1,7 +1,8 @@
 .PHONY: setup
 
-# Set python path
+# Set env
 export PYTHONPATH := $(shell pwd)
+export TOKENIZERS_PARALLELISM := false
 
 # Variables
 PYTHON := python3
@@ -35,3 +36,7 @@ pretokenize_data: $(VENV_DIR)
 data_loading_ex1: $(VENV_DIR)
 	@echo "Runing exercise 1..."
 	$(VENV_DIR)/bin/python src/1-data_loading/ex1.py
+
+data_loading_benchmark: $(VENV_DIR)
+	@echo "Running data loading benchmark..."
+	$(VENV_DIR)/bin/python src/1-data_loading/benchmark.py
