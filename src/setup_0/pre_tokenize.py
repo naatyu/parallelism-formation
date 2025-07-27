@@ -1,6 +1,7 @@
 """Pre-tokenize dataset for better loading performance."""
 
 import argparse
+import struct
 from itertools import chain
 from pathlib import Path
 
@@ -32,11 +33,13 @@ if __name__ == "__main__":
     dataset = load_dataset("parquet", data_dir=args.data_path, split="train")
 
     # Remove unused columns
-    dataset = dataset.remove_columns(
-        [col for col in dataset.column_names if col != "text"],
-    )
+    if dataset.column_names is not None:
+        dataset = dataset.remove_columns(
+            [col for col in dataset.column_names if col != "text"],
+        )
+    else:
+        logger.error("No columns found in the dataset.")
 
-    # TODO: remove later, only for local test
     dataset = dataset.select(range(50000))
 
     # Load tokenizer
@@ -56,7 +59,7 @@ if __name__ == "__main__":
         # The output of map must be a dictionary
         return {"input_ids": tokenized_texts}
 
-    logger.info("Tokenizing dataset with optimized batch processing...")
+    logger.info("Tokenizing dataset...")
     # Use multiple processes for faster tokenization
     num_proc = 6
     tokenized_dataset = dataset.map(
@@ -80,18 +83,30 @@ if __name__ == "__main__":
     # Reshape flat array
     shaped_tokens = all_tokens[: num_lines * seq_len].reshape((num_lines, seq_len))
 
+    # Header for mmap files
+    header_size = struct.calcsize("II")
+    header = struct.pack("II", shaped_tokens.shape[0], shaped_tokens.shape[1])
+
     # Create memmap
     if not args.save_path.exists():
         args.save_path.mkdir(parents=True, exist_ok=True)
     mmap_path = Path(args.save_path) / "pretokenized.mmap"
+
+    # Write header
+    logger.info("Writing tokens to memmap file...")
+    with mmap_path.open("wb") as f:
+        f.write(header)
+        f.seek(np.prod(shaped_tokens.shape) + header_size - 1)
+        f.write(b"\0")
+
+    # Write data
     memmap_array = np.memmap(
         mmap_path,
         dtype=np.int32,
-        mode="w+",
+        offset=header_size,
+        mode="r+",
         shape=shaped_tokens.shape,
     )
-
-    logger.info("Writing tokens to memmap file...")
     memmap_array[:] = shaped_tokens[:]
     memmap_array.flush()
 
