@@ -7,6 +7,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, IterableDataset
 
+from src.utils import logger
+
 
 class MemmapIterableDataset(IterableDataset):
     """IterableDataset for reading memory-map file.
@@ -46,7 +48,7 @@ class MemmapIterableDataset(IterableDataset):
 
     def __len__(self) -> int:
         """Return len of our dataset."""
-        return self.num_seq
+        raise NotImplementedError
 
     def __iter__(self) -> Generator:
         """Yield tokenized sequences."""
@@ -55,62 +57,49 @@ class MemmapIterableDataset(IterableDataset):
 
         if worker_info is None:
             # Single-process loading: the worker processes the entire dataset.
-            start_index = 0
-            end_index = self.num_seq
+            # Implement the `start_index` and `end_index` for a single worker
+            start_index = NotImplemented
+            end_index = NotImplemented
         else:
             # Multi-process loading: each worker gets a specific chunk.
             worker_id = worker_info.id
             num_workers = worker_info.num_workers
 
-            # Calculate the chunk size for each worker.
-            per_worker = math.ceil(self.num_seq / num_workers)
-            start_index = worker_id * per_worker
-            end_index = min(start_index + per_worker, self.num_seq)
+            # Implement the `start_index` and `end_index` for multiple workers
+            # Notice that worker_id and num_workers are available :)
+            # Tip: use math.ceil for upper rounding
+            start_index = NotImplemented
+            end_index = NotImplemented
 
         # Iterate through the assigned chunk of data.
         for i in range(start_index, end_index):
-            # Fetch the sequence. Using .copy() is important for multiprocessing
-            # to ensure each worker gets its own copy of the data slice.
-            sequence = self.data[i].copy()
+            # Fetch the sequence. Don't forget to copy the data for it to be available
+            sequence = NotImplemented
 
-            # Convert to a tensor and yield in a dictionary format.
-            yield torch.from_numpy(sequence).long()
+            # Convert to a tensor and yield data with long data type.
+            yield NotImplementedError
 
 
-# --- Example Usage ---
 if __name__ == "__main__":
-    # Assume the pre-tokenization script has been run and created this file.
-    MMAP_FILE_PATH = Path("data/pretokenized_dataset/pretokenized.mmap")
+    mmap_file_path = Path("data/pretokenized_dataset/pretokenized.mmap")
+    iterable_dataset = MemmapIterableDataset(mmap_path=mmap_file_path)
 
-    # 1. Create an instance of the dataset
-    if MMAP_FILE_PATH.exists():
-        print(f"Loading dataset from {MMAP_FILE_PATH}...")
-        iterable_dataset = MemmapIterableDataset(mmap_path=MMAP_FILE_PATH)
+    dataloader = DataLoader(
+        iterable_dataset,
+        batch_size=8,
+        num_workers=0,
+    )
+    sample = next(iter(dataloader))
+    multiprocess_dataloader = DataLoader(
+        iterable_dataset,
+        batch_size=8,
+        num_workers=4,
+    )
+    multiprocess_sample = next(iter(multiprocess_dataloader))
 
-        # 2. Use it with a DataLoader
-        # Set num_workers > 0 to see the multi-worker partitioning in action.
-        dataloader = DataLoader(
-            iterable_dataset,
-            batch_size=8,
-            num_workers=4,
-            pin_memory=True,
-        )
+    # Tests
+    assert len(iterable_dataset) == 57044  # noqa: PLR2004, S101
+    assert multiprocess_sample.dtype == torch.int64  # noqa: S101
+    assert sample.dtype == torch.int64  # noqa: S101
 
-        print(f"\nCreated DataLoader with {dataloader.num_workers} workers.")
-        print(f"Total sequences in dataset: {len(iterable_dataset)}")
-
-        # 3. Iterate through a few batches to test
-        print("\nFetching a few sample batches...")
-        for i, batch in enumerate(dataloader):
-            print(f"Batch {i + 1}:")
-            print("  input_ids shape:", batch.shape)
-            print("  input_ids dtype:", batch.dtype)
-
-            if i >= 2:  # Stop after fetching 3 batches for this demo
-                break
-
-        print("\n✅ IterableDataset with multi-worker support is working correctly.")
-
-    else:
-        print(f"❌ Error: Memmap file not found at '{MMAP_FILE_PATH}'.")
-        print("Please run the pre-tokenization script first.")
+    logger.info("All tests passed !")
