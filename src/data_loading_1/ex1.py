@@ -40,11 +40,6 @@ def tokenize_collate(batch: list[str]) -> torch.Tensor:
 
 if __name__ == "__main__":
     map_dataset = CustomTextDataset("data/sample/10BT")
-    custom_loader = DataLoader(
-        map_dataset,
-        batch_size=32,
-        collate_fn=tokenize_collate,
-    )
 
     # Tests
     assert len(map_dataset) == 9672101  # noqa: PLR2004, S101
