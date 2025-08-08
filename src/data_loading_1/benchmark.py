@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from tabulate import tabulate
 from torch.utils.data import DataLoader
 
 from src.data_loading_1 import ex1, ex2
@@ -23,7 +24,7 @@ def run_benchmark(  # noqa: PLR0913
     warmup_steps: int = 10,
     *,
     use_cuda_sync: bool = False,
-) -> None:
+) -> float | None:
     """Run a benchmark for a given action and data loader.
 
     Args:
@@ -70,7 +71,7 @@ def run_benchmark(  # noqa: PLR0913
     print(f"\n--- {description} ---")
     if not timings:
         print("No timings recorded.")
-        return
+        return None
 
     mean_ms = statistics.mean(timings) * 1e3
     stdev_ms = statistics.stdev(timings) * 1e3 if len(timings) > 1 else 0.0
@@ -80,6 +81,8 @@ def run_benchmark(  # noqa: PLR0913
     print(f"Min time:        {min(timings) * 1e3:.3f} ms")
     print(f"Max time:        {max(timings) * 1e3:.3f} ms")
     print("----------------------------------------")
+
+    return mean_ms
 
 
 if __name__ == "__main__":
@@ -115,6 +118,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # --- Setup ---
+    benchmark_results = {}
     base_dataset = ex1.CustomTextDataset(args.data_path)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if device != "cuda":
@@ -141,13 +145,15 @@ if __name__ == "__main__":
                 **config["loader_params"],
             ),
         )
-        run_benchmark(
+        mean_time = run_benchmark(
             description=config["description"],
             loader=loader,
             action=None,  # Time next(loader)
             num_steps=args.num_steps,
             warmup_steps=args.warmup_steps,
         )
+        if mean_time is not None:
+            benchmark_results[config["description"]] = mean_time
 
     # --- 2. Benchmark GPU transfer speed ---
     if device == "cuda":
@@ -173,7 +179,7 @@ if __name__ == "__main__":
                     **config["loader_params"],
                 ),
             )
-            run_benchmark(
+            mean_time = run_benchmark(
                 description=config["description"],
                 loader=loader,
                 action=lambda batch: batch.to(device, non_blocking=True),
@@ -181,6 +187,8 @@ if __name__ == "__main__":
                 num_steps=args.num_steps,
                 warmup_steps=args.warmup_steps,
             )
+            if mean_time is not None:
+                benchmark_results[config["description"]] = mean_time
 
     # --- 3. Benchmark MemmapIterableDataset (ex2) ---
     logger.info("\n--- Benchmarking MemmapIterableDataset (ex2) ---")
@@ -212,3 +220,14 @@ if __name__ == "__main__":
             num_steps=args.num_steps,
             warmup_steps=args.warmup_steps,
         )
+        if mean_time is not None:
+            benchmark_results[config["description"]] = mean_time
+
+    # Prepare data in a list of lists format for tabulate
+    table_data = [[name, f"{time:.4f}"] for name, time in benchmark_results.items()]
+
+    # Define headers
+    headers = ["Benchmark", "Time (s)"]
+
+    # Use tabulate to print a pretty table
+    print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
