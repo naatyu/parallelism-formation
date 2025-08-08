@@ -11,9 +11,8 @@ from typing import Any
 import torch
 from torch.utils.data import DataLoader
 
+from src.data_loading_1 import ex1, ex2
 from src.utils import logger
-
-from . import ex1
 
 
 def run_benchmark(  # noqa: PLR0913
@@ -182,3 +181,34 @@ if __name__ == "__main__":
                 num_steps=args.num_steps,
                 warmup_steps=args.warmup_steps,
             )
+
+    # --- 3. Benchmark MemmapIterableDataset (ex2) ---
+    logger.info("\n--- Benchmarking MemmapIterableDataset (ex2) ---")
+    memmap_dataset = ex2.MemmapIterableDataset(
+        "data/pretokenized_dataset/pretokenized.mmap",
+    )
+    memmap_configs = [
+        {
+            "description": "Memmap CPU Iteration: 1 worker",
+            "loader_params": {"num_workers": 0},
+        },
+        {
+            "description": f"Memmap CPU Iteration: {args.num_workers} workers",
+            "loader_params": {"num_workers": args.num_workers},
+        },
+    ]
+    for config in memmap_configs:
+        loader = iter(
+            DataLoader(
+                dataset=memmap_dataset,
+                batch_size=args.batch_size,
+                **config["loader_params"],
+            ),
+        )
+        mean_time = run_benchmark(
+            description=config["description"],
+            loader=loader,
+            action=None,  # Time next(loader)
+            num_steps=args.num_steps,
+            warmup_steps=args.warmup_steps,
+        )
