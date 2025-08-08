@@ -75,7 +75,7 @@ class MemmapIterableDataset(IterableDataset):
         # Iterate through the assigned chunk of data.
         for i in range(start_index, end_index):
             # Fetch the sequence. Don't forget to copy the data for it to be available
-            sequence = self.data[i].copy()
+            sequence = np.copy(self.data[i])
 
             # Convert to a tensor and yield in a dictionary format.
             yield torch.from_numpy(sequence).long()
