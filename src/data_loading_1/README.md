@@ -14,7 +14,9 @@ This exercise implement an `IterableDataset`. The goal is to load the data from 
 
 # Benchmark
 
-When done with the previous exercises run the benchmark and see the difference between various parameters with:
+When done with the previous exercises, run the benchmark and see the difference between various parameters with:
 ```bash
 make data_loading_benchmark
 ```
+
+What are you observations ?
