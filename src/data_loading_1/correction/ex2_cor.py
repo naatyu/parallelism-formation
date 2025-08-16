@@ -32,19 +32,10 @@ class MemmapIterableDataset(IterableDataset):
             raise FileNotFoundError(msg)
 
         # Read header
-        header_size = struct.calcsize("II")
+        self.header_size = struct.calcsize("II")
         with self.mmap_path.open("rb") as f:
-            header_bytes = f.read(header_size)
+            header_bytes = f.read(self.header_size)
         self.num_seq, self.seq_len = struct.unpack("II", header_bytes)
-
-        # Get data, not placed in RAM
-        self.data = np.memmap(
-            self.mmap_path,
-            dtype=np.int32,
-            mode="r",
-            offset=header_size,
-            shape=(self.num_seq, self.seq_len),
-        )
 
     def __len__(self) -> int:
         """Return len of our dataset."""
@@ -54,6 +45,15 @@ class MemmapIterableDataset(IterableDataset):
         """Yield tokenized sequences."""
         # Get worker information.
         worker_info = torch.utils.data.get_worker_info()
+
+        # Load mmap in worker process
+        data = np.memmap(
+            self.mmap_path,
+            dtype=np.int32,
+            mode="r",
+            offset=self.header_size,
+            shape=(self.num_seq, self.seq_len),
+        )
 
         if worker_info is None:
             # Single-process loading: the worker processes the entire dataset.
@@ -75,7 +75,7 @@ class MemmapIterableDataset(IterableDataset):
         # Iterate through the assigned chunk of data.
         for i in range(start_index, end_index):
             # Fetch the sequence. Don't forget to copy the data for it to be available
-            sequence = np.copy(self.data[i])
+            sequence = np.copy(data[i])
 
             # Convert to a tensor and yield in a dictionary format.
             yield torch.from_numpy(sequence).long()
