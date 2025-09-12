@@ -49,7 +49,7 @@ Certains valent le coup qu'on s'y penche dessus.
 
 C'est un argument assez simple, il correspond au nombre de samples du dataset que le dataloader doit récupérer. Pourtant il peut avoir un impact assez fort dû à l'architecture actuelle des GPUs.
 
-<img src="1_data_loading_images/warp.png" alt="gpu warp" width="300"/>
+<img src="assets/1_data_loading/warp.png" alt="gpu warp" width="300"/>
 
 Un GPU possède des *warps*. Un warp est composé d'un certains nombre de threads (32 pour les architectures récentes) et tous les threads d'un warp sont exécutés en même temps.\
 Ce qui veut dire que si on a un kernel (fonction qui tourne sur un GPU) qui à besoin que d'un seul thread, tous les autres threads (31 autres) seront en stand by et inutilisable tant que ce thread n'aura pas finit son exécution.\
@@ -60,7 +60,7 @@ C'est pour cela qu'on favorise une batch size multiple de 32 car cela correspond
 Un worker est un processus qui va s'occuper du chargement des données. L'avantage c'est que on peux donc avoir plusieurs workers qui travaillent en même temps pour charger la donnée.\
 Si on a `num_wokers=0` alors le processus principal (celui qui s'occupe également de tout le reste dans notre entraînement) va s'occuper de charger les données. En revanche pour `num_workers=N` on va avoir $N$ différents processus qui vont s'occuper de charger les données, le processus principal reste focaliser sur le reste de notre entraînement.
 
-<img src="1_data_loading_images/workers.png" alt="gpu warp" width="400"/>
+<img src="assets/1_data_loading/workers.png" alt="gpu warp" width="400"/>
 
 En revanche ce n'est pas parfait:
 - Comme la mémoire est partagé entre les processus, cela peut créer des accès concurentiels sur nos données et donc un potentiel bottleneck.
@@ -228,11 +228,11 @@ Lorsque l'on crée des batch de données, on ne peut pas toujours avoir des samp
 Le problème est que ces tokkens de padding ne servent à rien, ils sont juste la pour combler le trou entre les différentes phrases de notre batch. Cela revient à utiliser de la puissance de calcul et de la VRAM pour des tokkens fictifs.\
 Pour combler cela, on peut utiliser le 'sequence packing'. Le principe est simple, plutôt que d'avoir une seule donnée par sample dans un batch, on peut concaténer les données jusqu'a ce que notre sample soit plein. Un exemple en image:
 
-<img src="1_data_loading_images/packing.png" alt="gpu warp" width="400"/>
+<img src="assets/1_data_loading/packing.png" alt="gpu warp" width="400"/>
 
 Pour du texte, cela revient à concaténer plusieurs phrases dans une seule séqence de notre batch. On utilise un token `<eos>` pour signifier que l'on à atteint la fin d'une phrase et que l'on va lire la suivante. En revanche si on utilise un transformer (ce qui est très courant) on va avoir besoin de faire quelques modifications. De base le masque d'attention est triangulaire et plein, mais cela implique que des tokkens d'une phrase peuvent voir les tokkens d'une autre phrase (ce que l'on ne souhaite pas). Pour cela on peut modifier le masque d'attention:
 
-<img src="1_data_loading_images/attn_mask.png" alt="gpu warp" width="500"/>
+<img src="assets/1_data_loading/attn_mask.png" alt="gpu warp" width="500"/>
 
 Lorsque l'on atteint un tokken `<eos>`, on reset notre masque d'attention de façon a ce que les tokkens ne puissent pas ce voir d'une séquence à l'autre. Voici un exemple de code (crédit: [https://huggingface.co/blog/sirluk/llm-sequence-packing](https://huggingface.co/blog/sirluk/llm-sequence-packing)):
 ```py
@@ -308,7 +308,7 @@ Il est également possible que les pages soient liés a une frame sur le disque 
 Pour accèlérer le tout, les ordinateurs possèdent un composant appelé Memory Management Unit (MMU), qui permet de faire les traductions pages &rarr; frames de manière instantané.\
 Voici un schéma représentatif de la gestion de la mémoire dans notre ordinateur:
 
-<img src="1_data_loading_images/memoire_virtuelle.png" alt="gpu warp" width="250"/>
+<img src="assets/1_data_loading/memoire_virtuelle.png" alt="gpu warp" width="250"/>
 
 
 
