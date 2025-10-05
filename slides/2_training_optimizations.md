@@ -335,28 +335,130 @@ model = torch.compile(
     }
 )
 ```
-Dans l'ensemble vous pouvez laisser les paramètres par défaut pour l'entrainement du modèle. Pour de l'inférence utilisez `fullgraph=True` et `mode="max-autotune"`. Le mode max-autotune rend la compilation plus longue mais permet de trouver les kernels optimaux pour le modèle, ce qui est pratique pour de l'inférence car on compile le modèle une fois puis on laisse le modèle compilé disponible pendant longtemps.\
+Dans l'ensemble vous pouvez laisser les paramètres par défaut pour l'entrainement du modèle. Pour de l'inférence utilisez `fullgraph=True` et `mode="max-autotune"`. Le mode max-autotune rend la compilation plus longue mais permet de trouver les kernels optimaux pour le modèle, ce qui est pratique pour de l'inférence car on compile le modèle une fois puis on laisse le modèle compilé disponible pendant longtemps.
 > ✅ Pour de l'entrainement distribué, il vaut mieux compiler le modèle avant d'utiliser les méthodes d'entrainement distribué comme le DPP ou le FSDP.
 
 # 4 - Nice numbers
 
-Ca peut paraitre absurde, mais utiliser des nombres qui contiennent un grand nombres de puissances de 2 peut améliorer vos performances. Cela est principalement du au fait que les GPUs ont beaucoup d'opérations/méchanismes qui fonctionnent par puissance de 2. Par exemple l'accès mémoire est optimisé pour des chunks qui sont des puissances de 2 (comme 64, 128, etc.) ou encore les GPUs fonctionnent par blocks de threads, qui sont souvent des puissances de 2 (comme 32 blocks de 128 threads par exemple). On a donc tout intérêt dans notre code à arrondir nos variables utiles aux calculs (comme le nombre de neurones dans une couche linéaire) afin d'accélérer les calculs. Par exemple si vous faites du NLP, en utilisant un vocabulaire de taille 8192 au lieu de 8063 peut améliorer l'exécution de près de 5% alors que pourtant on a augmenté le nombres de calculs à réaliser (un vocabulaire plus grand augmente la taille d'entrée d'un LLM).
-Il est donc conseillé d'analyser votre code et d'essayer de transformer un maximum de vos variables en nombre contenant de nombreuses puissances de 2.
+Pour maximiser l'efficacité des calculs GPUs, il est fortement recommandé de choisir des dimensions ou des tailles de données qui sont des puissances de deux (c'est-à-dire $2^n$ : $1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048$, etc.).
 
-# 5 - Fused Adam
+## 4.1 - Impact des nombres
 
-Adam est l'un des optimizer le plus utilisé aujourd'hui et il est très probable que vous l'utilisiez aussi. Et bien sachez qu'il existe une version optimisé de cet optimizer appelé Fused Adam. Adam contient plusieurs opération classique qui sont le calcul des gradients, la mise à jour de l'estimation des moments ainsi que la mise à jour des paramètres. Le but de Fused Adam est de "fusionner" ces opérations dans un seul kernel GPU (une fonction qui tourne sur GPU). Cela permet ainsi de réduire les accès couteux en mémoire et accélérer les calculs. Pour utiliser Fused Adam avec PyTorch:
+L'avantage principal réside dans la manière dont le matériel et le logiciel des GPUs sont conçus et optimisés pour la parallélisation et l'accès mémoire.
+
+### 4.1.1 - Accès et Alignement de la Mémoire
+
+Les GPUs fonctionnent de manière optimale lorsqu'ils accèdent à la mémoire par "chunks" ou blocs de données de taille fixe.
+
+- **Alignement Optimal :** Les architectures GPU, comme CUDA (pour NVIDIA), sont conçues pour charger des données de la mémoire globale de façon groupée. Ces unités de transfert (comme les lignes de cache ou les segments de mémoire) sont presque toujours des puissances de deux (par exemple, 64 octets, 128 octets, etc.).
+- **Cohérence de l'Accès (Coalescing) :** Lorsque plusieurs threads d'un bloc accèdent simultanément à des emplacements mémoire contigus, si la taille totale des données correspond à une puissance de deux et est alignée correctement, le GPU peut fusionner (ou "coalescer") ces accès en une seule transaction efficace. Cela réduit drastiquement la latence et améliore le débit mémoire. Si les données ne sont pas alignées sur des puissances de deux, le GPU pourrait devoir effectuer plusieurs transactions moins efficaces.
+
+### 4.1.2 - Organisation des Threads et des Calculs
+
+Les GPUs exécutent les calculs en parallèle en organisant les threads (les unités d'exécution) en blocs et en grilles.
+
+- **Warp ou Wavefront :** L'unité d'exécution la plus petite et la plus fondamentale est un groupe de threads appelé Warp (NVIDIA) ou Wavefront (AMD). La taille de ces groupes est généralement une puissance de deux, le plus souvent 32 threads.
+- **Planification Efficace :** Lorsque le nombre de données à traiter (par exemple, le nombre de neurones dans une couche) est un multiple ou correspond directement à la taille d'un Warp, le GPU peut distribuer la charge de travail de manière parfaitement égale et sans gaspillage. Utiliser des tailles qui ne sont pas des multiples de 32 (ou de 64, 128, etc., selon l'organisation des blocs) entraîne souvent un gaspillage de ressources, car des threads entiers peuvent être inactifs (divergence ou sous-utilisation).
+
+## 4.2 - Exemple concret sur le vocabulaire d'un LLM
+
+Si notre modèle utilise un vocabulaire de taille 8063, le GPU devra quand même probablement allouer l'espace et organiser les calculs pour la puissance de deux supérieure, soit 8192 ($2^{13}$), mais une partie de cet espace sera inutilisée (du au *padding*).\
+En utilisant délibérément 8192 (ou une autre puissance de deux) comme taille de vocabulaire, même si cela augmente légèrement le nombre total de calculs (plus d'embeddings, de poids de matrice), l'amélioration de l'efficacité de l'accès mémoire et de l'exécution parallèle sur le GPU est si significative qu'elle compense largement le coût des calculs supplémentaires (entrainement 5% plus rapide mesuré).
+
+## 4.3 - Recommandation
+
+Analysez votre code et, pour les variables qui définissent des dimensions cruciales (telles que le nombre de neurones dans une couche dense, la taille du vocabulaire, la batch size, ou les dimensions d'une matrice), arrondissez-les à la puissance de deux supérieure la plus proche ou à un multiple de la puissance de deux fondamentale de l'architecture (souvent 32 ou 64). Cette petite modification peut débloquer des gains de performance substantiels au niveau matériel.
+
+Absolument. Le concept de **"Fused Kernels"** est une optimisation cruciale pour l'apprentissage profond.
+
+Voici une réécriture plus claire et techniquement plus précise pour votre section de blog :
+
+# 5 - Fused AdamW
+
+L'algorithme Adam (Adaptive Moment Estimation) est sans doute l'optimiseur le plus populaire en Deep Learning. Cependant, pour maximiser l'efficacité sur les architectures parallèles comme les GPUs, il est essentiel d'utiliser ses versions optimisées.
+
+## 5.1 - Le Principe de la Fusion de Kernels
+
+Un optimiseur comme Adam effectue plusieurs étapes à chaque itération (chaque batch) :
+
+1.  Calcul du Gradient (backpropagation).
+2.  Mise à jour des Moments ($\beta_1$ et $\beta_2$, les moyennes et variances mobiles des gradients).
+3.  Mise à jour des Paramètres (application de la learning rate).
+
+Traditionnellement, le GPU exécute chacune de ces étapes séparément, nécessitant à chaque fois :
+
+1.  L'exécution d'une fonction (Kernel) sur le GPU.
+2.  Le chargement des données (gradients, moments, paramètres) de la mémoire globale du GPU vers les registres ou le cache du GPU.
+3.  L'écriture des résultats intermédiaires dans la mémoire globale.
+
+Ces opérations d'accès à la mémoire globale sont les plus couteuses en temps sur un GPU.
+
+Le concept de Fused Adam (ou de tout algorithme "fused") consiste à combiner toutes ces étapes (calcul des moments et mise à jour des paramètres) en un seul et unique kernel GPU.
+
+En fusionnant les opérations :
+
+  * **Réduction des Lancements de Kernels :** On passe de plusieurs lancements à un seul, réduisant la surcharge administrative (*overhead*) du GPU.
+  * **Réduction des Transferts Mémoire :** Les données intermédiaires (comme les moments mis à jour) restent dans la mémoire rapide (registres ou cache L1) du GPU, au lieu d'être écrites et relues depuis la mémoire globale lente. Cela permet d'atteindre le niveau de performance maximal du GPU.
+
+En bref, on échange quelques calculs supplémentaires potentiels contre une réduction drastique de la latence de la mémoire.
+
+## 5.2 - Utiliser Fused AdamW avec PyTorch
+
+Le standard actuel ne se limite pas à Adam, mais utilise majoritairement AdamW (Adam with Weight Decay). AdamW corrige une faille théorique d'Adam en découplant la régularisation L2 (*weight decay*) de la mise à jour des gradients, ce qui conduit à une meilleure généralisation et une convergence plus rapide, surtout pour les modèles de grande taille.
+
+PyTorch permet d'activer la version optimisée (*Fused*) directement sur AdamW (et d'autres optimiseurs) :
+
 ```python
-optimizer = torch.optim.AdamW(params, lr, fused=True)
+optimizer = torch.optim.AdamW(
+    params=model.parameters(), 
+    lr=1e-3, 
+    betas=(0.9, 0.999), 
+    eps=1e-8, 
+    weight_decay=0.01, 
+    fused=True # C'est ici que l'optimisation est activée
+)
 ```
-Il suffit d'utiliser l'option `fused=True` pour utiliser Fused Adam. Vous pouvez voir qu'ici j'utilise AdamW, une version amélioré de Adam qui implémente le weight decay (Adam with Weight decay) et permet d'avoir une meilleure généralisation. AdamW est connu pour être plus performant que Adam surtout sur des modèles de grande tailles, il converge également plus vite dans certains cas. De façon générale, il est recommandé d'utiliser AdamW par rapport à Adam. Pour plus d'infos https://pytorch.org/docs/stable/generated/torch.optim.AdamW.html.
 
-# BONUS - Flash Attention
+> ⚠️ **Note :** L'option `fused=True` nécessite des architectures GPU récentes (généralement NVIDIA, version CUDA compatible) et un PyTorch compilé avec les bonnes dépendances. Si disponible, c'est l'approche recommandée pour tout entraînement de modèle à grande échelle.
 
-Si vous utilisez l'attention dans vos modèles PyTorch, sachez que vous pouvez utiliser une version plus efficace de l'attention appelé Flash Attention. La flash attention à été développé par des chercheurs afin de réduire le temps de calcul de l'attention classique. L'avantage c'est que la flash attention permet d'avoir une utilisation mémoire en $O(n)$ au lieu de $O(n^2)$. Pour cela, les queries, keys et values sont découpés en petit blocs puis l'attention est calculé sur ces petits blocks. Cela permet ainsi de mieux gérer l'utilisation mémoire mais également d'accélérer le calcul.
-Pour utiliser la flash attention dans PyTorch:
+C'est une excellente optimisation à inclure \! L'intégration de **FlashAttention** dans PyTorch est un développement majeur.
+
+Voici une reformulation de cette section, plus claire et avec des explications techniques détaillées :
+
+# BONUS - FlashAttention
+
+Si votre modèle utilise le mécanisme d'attention, l'implémentation standard peut rapidement devenir le goulot d'étranglement de vos performances. La solution moderne est *FlashAttention*, une technique conçue par des chercheurs de Stanford pour rendre le calcul de l'attention beaucoup plus rapide et efficace en mémoire.
+
+## Le Problème de l'Attention Standard
+
+Le mécanisme d'attention est défini par le produit matriciel $Softmax(\frac{QK^T}{\sqrt{d_k}})V$. Lorsque la longueur de la séquence ($N$) augmente, l'opération devient extrêmement coûteuse pour deux raisons :
+
+1.  **Complexité en Temps et Mémoire :** La matrice d'attention ($QK^T$) a une taille $N \times N$. Sa construction nécessite une complexité en temps de $O(N^2)$ et, plus critique encore, une complexité en mémoire de $O(N^2)$. Pour les longues séquences (par exemple, $N=32768$ ou plus), stocker cette matrice est souvent impossible avec la mémoire limitée des GPUs.
+2.  **Surcharge Mémoire (HBM Latency) :** Même sans saturer la mémoire, l'attention standard est limitée par la vitesse à laquelle les données peuvent être lues de la Mémoire à Haute Bande Passante (HBM) du GPU vers la mémoire *on-chip* plus rapide (*SRAM*, cache). Le calcul implique trop de lectures et écritures coûteuses.
+
+## Le Principe de FlashAttention
+
+FlashAttention contourne ces problèmes en exploitant l'organisation hiérarchique de la mémoire des GPUs (la différence de vitesse entre la HBM lente et le *SRAM* rapide).
+
+Son innovation réside dans le tiling et la réduction d'écriture (write reduction) :
+
+1.  **Tiling (Découpage en Blocs) :** Les matrices d'entrée $\mathbf{Q}$, $\mathbf{K}$ et $\mathbf{V}$ sont divisées en petits blocs (tiles). Le calcul de l'attention est ensuite effectué bloc par bloc.
+2.  **Passes Multiples sur SRAM :** Chaque bloc d'attention est calculé dans le SRAM rapide du GPU (la mémoire *on-chip*). Les résultats intermédiaires (les sommes et les facteurs de normalisation) sont gérés de manière itérative, sans jamais écrire la matrice d'attention complète $N \times N$ dans la mémoire globale (HBM).
+
+Grâce à cette approche :
+- **Complexité Mémoire Drastiquement Réduite :** L'empreinte mémoire en HBM passe de O(N²) à O(N), car seuls les vecteurs d'entrée/sortie de taille linéaire sont stockés, tandis que les calculs intermédiaires sont effectués dans le SRAM avec des blocs de taille constante.
+- **Vitesse Accélérée :** La réduction des accès à la HBM et l'optimisation des opérations dans le SRAM se traduisent par des accélérations de calcul allant jusqu'à **3 fois** par rapport aux implémentations standard.
+
+## Intégration dans PyTorch 2.x
+
+La bonne nouvelle est que, depuis PyTorch 2.0, l'optimisation FlashAttention (ou une technique similaire appelée Memory-Efficient Attention) est intégrée directement dans la fonction standard d'attention.
+
+Pour en bénéficier, il suffit d'utiliser la fonction native de PyTorch :
+
 ```python
+import torch.nn.functional as F
 
-out = torch.nn.functionnal.scaled_dot_product_attention(q, k, v, attn_mask)
+# PyTorch active automatiquement la meilleure implémentation disponible 
+# (FlashAttention si le matériel le supporte)
+output = F.scaled_dot_product_attention(query, key, value, attn_mask=None)
 ```
-De base toutes les optimisations sont activés donc vous n'avez rien de plus à faire. Pour plus de détails https://pytorch.org/docs/2.2/generated/torch.nn.functional.scaled_dot_product_attention.html.
